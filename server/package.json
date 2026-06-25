@@ -1,0 +1,43 @@
+{
+  "name": "ascend-server",
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=../.env --watch src/index.js",
+    "dev:worker": "node --env-file=../.env --watch src/worker.js",
+    "start": "node --env-file=../.env src/index.js",
+    "test": "vitest run",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
+    "@aws-sdk/client-s3": "^3.1072.0",
+    "@aws-sdk/s3-request-presigner": "^3.1072.0",
+    "@mozilla/readability": "^0.6.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@react-pdf/renderer": "^4.5.1",
+    "axios": "^1.18.0",
+    "bcrypt": "^5.1.1",
+    "bullmq": "^5.79.0",
+    "cloudinary": "^2.10.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.4.2",
+    "express": "^5.1.0",
+    "ioredis": "^5.11.1",
+    "ipaddr.js": "^2.4.0",
+    "jsdom": "^29.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "openai": "^6.44.0",
+    "pg": "^8.16.0",
+    "puppeteer": "^25.1.0",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.29.0",
+    "eslint": "^9.29.0",
+    "eslint-config-prettier": "^10.1.5",
+    "prisma": "^7.8.0",
+    "supertest": "^7.1.1",
+    "vitest": "^3.2.4"
+  }
+}

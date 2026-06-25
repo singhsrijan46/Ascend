@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String        @id @default(uuid())
+  email         String        @unique
+  passwordHash  String
+  createdAt     DateTime      @default(now())
+  resumeBlocks  ResumeBlock[]
+  applications  Application[]
+  refreshTokens RefreshToken[]
+  jobScores     UserJobScore[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Application {
+  id            String          @id @default(uuid())
+  userId        String
+  jdId          String?
+  company       String
+  roleTitle     String
+  source        String?
+  stage         Stage           @default(SAVED)
+  nextActionAt  DateTime?
+  notes         String?         @db.Text
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+  stageEvents   StageEvent[]
+  resumeVersion ResumeVersion?
+  analyses      Analysis[]
+  reminders     Reminder[]
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jd            JobDescription? @relation(fields: [jdId], references: [id])
+
+  @@index([userId, stage])
+  @@index([userId, createdAt])
+  @@index([userId, deletedAt])
+}
+
+enum Stage {
+  SAVED
+  APPLIED
+  OA
+  TECH
+  HR
+  OFFER
+  REJECTED
+  GHOSTED
+}
+
+model StageEvent {
+  id            String      @id @default(uuid())
+  applicationId String
+  fromStage     Stage?
+  toStage       Stage
+  at            DateTime    @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, at])
+}
+
+// Global, content-addressed — no userId. Hash deduplicates across all users.
+model JobDescription {
+  id          String      @id @default(uuid())
+  sourceUrl   String?
+  rawText     String      @db.Text
+  jdHash      String      @unique
+  structured  Json?
+  parseStatus ParseStatus @default(QUEUED)
+  parseError  String?
+  embedding   Unsupported("vector(1536)")?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  applications Application[]
+
+  @@index([parseStatus])
+}
+
+enum ParseStatus {
+  QUEUED
+  FETCHING
+  PARSING
+  DONE
+  FAILED
+}
+
+model ResumeBlock {
+  id           String    @id @default(uuid())
+  userId       String
+  section      String
+  content      String    @db.Text
+  skillTags    String[]
+  orderDefault Int
+  archivedAt   DateTime?
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum RenderStatus {
+  PENDING
+  DONE
+  FAILED
+}
+
+model ResumeVersion {
+  id             String        @id @default(uuid())
+  userId         String
+  applicationId  String?       @unique
+  blocksSnapshot Json
+  pdfKey         String?
+  renderStatus   RenderStatus  @default(PENDING)
+  renderError    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  application    Application?  @relation(fields: [applicationId], references: [id])
+}
+
+model Analysis {
+  id              String       @id @default(uuid())
+  applicationId   String
+  kind            AnalysisKind
+  resumeVersionId String?
+  jdHash          String
+  result          Json
+  tokensIn        Int
+  tokensOut       Int
+  costUsd         Decimal      @db.Decimal(8, 5)
+  createdAt       DateTime     @default(now())
+  application     Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, kind, jdHash])
+}
+
+enum AnalysisKind {
+  GAP
+  PREP
+  TAILOR
+}
+
+model Reminder {
+  id            String      @id @default(uuid())
+  applicationId String
+  windowKey     String
+  draftEmail    String?     @db.Text
+  dismissedAt   DateTime?
+  createdAt     DateTime    @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, windowKey])
+  @@index([applicationId, dismissedAt])
+}
+
+// Global job postings — shared across all users. No userId.
+model DiscoveredJob {
+  id        String         @id @default(uuid())
+  company   String
+  title     String
+  url       String         @unique
+  location  String?
+  rawText   String         @db.Text
+  techStack String[]
+  fetchedAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  scores    UserJobScore[]
+
+  @@index([fetchedAt])
+}
+
+model UserJobScore {
+  id              String        @id @default(uuid())
+  userId          String
+  discoveredJobId String
+  score           Int
+  scoreReason     String
+  scoredAt        DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  discoveredJob   DiscoveredJob @relation(fields: [discoveredJobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, discoveredJobId])
+}
